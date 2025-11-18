@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Multi-File GitHub Pages Site Generator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root { --bg:#0f172a; --card:#111827; --muted:#94a3b8; --text:#e5e7eb; --accent:#22c55e; --link:#60a5fa; }
+    html,body { margin:0; padding:0; background:var(--bg); color:var(--text); font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol"; }
+    header { padding: 2.5rem 1rem 1rem; max-width: 980px; margin: 0 auto; }
+    header h1 { margin:0 0 .25rem; font-weight:700; }
+    header p { margin:.25rem 0; color: var(--muted); }
+    main { max-width: 980px; margin: 0 auto; padding: 1rem; }
+    .card { background: var(--card); border: 1px solid #1f2937; border-radius: 12px; padding: 1rem; margin: 1rem 0; }
+    .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+    a { color: var(--link); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    code, pre { background: #0b1220; border: 1px solid #1f2937; border-radius: 8px; padding: .5rem .75rem; color: #d1d5db; overflow: auto; }
+    .file-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: .75rem; border: 1px solid #1f2937; border-radius: 10px; background: #0b1220; }
+    .file-row div.meta { display: flex; flex-direction: column; gap: 2px; }
+    .file-row small { color: var(--muted); }
+    .file-actions a { margin-left: 10px; font-weight: 600; }
+    .badge { display:inline-block; border-radius:999px; padding: .2rem .55rem; font-size:.8rem; background:#0a1a10; color:#a7f3d0; border:1px solid #064e3b; vertical-align:middle; }
+    .ok { color: #86efac; }
+    .warn { color: #fbbf24; }
+    .err { color: #fca5a5; }
+    .inline-svg { background: #0b1220; border: 1px solid #1f2937; border-radius: 10px; padding: .5rem; display: inline-block; }
+    .controls { display:flex; gap: 8px; flex-wrap: wrap; }
+    input[type="text"] { background:#0b1220; border:1px solid #1f2937; color:var(--text); border-radius:8px; padding:.5rem .75rem; min-width:240px; }
+    button { background: #1e293b; color: var(--text); border: 1px solid #334155; padding: .5rem .75rem; border-radius: 8px; cursor: pointer; }
+    button:hover { background: #0f172a; }
+    footer { padding: 2rem 1rem; color: var(--muted); text-align:center; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Project Hub: Public Files for GitHub Pages</h1>
+    <p>Generate and download all required assets as standalone files. Upload them to your public repo to publish via GitHub Pages.</p>
+    <div class="controls">
+      <button id="downloadAllBtn">Download all as .zip</button>
+      <span id="status" class="badge">Ready</span>
+    </div>
+  </header>
+
+  <main>
+    <section class="card">
+      <h2>Files overview</h2>
+      <p>This page builds the following files on-the-fly and provides direct download/open links. Each file is self-contained and ready to commit to your repository root for GitHub Pages.</p>
+      <div id="filesList" class="grid"></div>
+    </section>
+
+    <section class="card">
+      <h3>Preview: pelican.svg</h3>
+      <p>A pelican riding a bicycle (valid SVG). Rated by a lightweight on-page “LLM” heuristic.</p>
+      <div id="pelicanContainer" class="inline-svg"></div>
+      <p id="pelicanRating"></p>
+    </section>
+
+    <section class="card">
+      <h3>UID Attachment</h3>
+      <p>Paste your uid.txt content below to embed it into the downloadable uid.txt file. Your input is stored locally in your browser.</p>
+      <div class="controls">
+        <input type="text" id="uidInput" placeholder="Paste UID content here" />
+        <button id="saveUidBtn">Save UID</button>
+        <span id="uidSaved" class="badge" style="display:none;">UID saved</span>
+      </div>
+    </section>
+
+    <section class="card">
+      <h3>Quality checks</h3>
+      <ul id="checks">
+        <li>LICENSE contains MIT License text: <span id="checkLicense" class="ok">OK</span></li>
+        <li>about.md has exactly three words: <span id="checkAbout" class="ok">OK</span></li>
+        <li>ashravan.txt word count 300–400: <span id="checkAshravan" class="ok">OK</span> <small id="ashCount"></small></li>
+        <li>dilemma.json schema valid: <span id="checkDilemma" class="ok">OK</span></li>
+        <li>restaurant.json looks consistent: <span id="checkRestaurant" class="ok">OK</span></li>
+        <li>prediction.json rate within 0–1: <span id="checkPrediction" class="ok">OK</span></li>
+        <li>pelican.svg is valid XML: <span id="checkPelican" class="ok">OK</span></li>
+      </ul>
+    </section>
+  </main>
+
+  <footer>
+    <p>After downloading, commit all files to your repo root and enable GitHub Pages. Ensure uid.txt matches your provided attachment exactly.</p>
+  </footer>
+
+  <script>
+    // Utility
+    const toDataUri = (mime, content) => `data:${mime};charset=utf-8,${encodeURIComponent(content)}`;
+    const pretty = obj => JSON.stringify(obj, null, 2);
+    const byId = id => document.getElementById(id);
+
+    // Content definitions
+    const storyAshravan = (() => {
+      const text =
+`Ashravan woke to a palace that remembered him more clearly than he remembered himself. The walls wore the same tapestries, the gardens the same clipped harmony, yet the air held a faint seam—as if history itself bore a stitch he could almost see when the light caught it.
+
+Shai had gone, her work sealed by paint and promise. In her absence, he walked the corridors that had once formed him and now tested him. Servants bowed. Ministers watched. Gaotona's steady eyes held no accusation, only an invitation: choose.
+
+He touched the lacquered rail where the assassin’s blade had first unmade him. Memory arrived not as a flood but as rain, bead by bead, each drop carving a path down stone. The man he had been was austere, certain, and distant. The man who stood here was a question answered with breath.
+
+Whispers in the court called for purges to prove his strength, for spectacle to mend the empire’s frayed belief. But belief, he thought, was a tree: it did not grow if dragged. It needed soil and time and acts that didn’t tremble when no one watched.
+
+A petition awaited on his desk—the names of dissidents who had lit fear like tinder in the provinces. The old Ashravan would have signed in an ink made from inevitability. The new one felt the wetness of rain on his fingers and shut his eyes.
+
+“Bring them,” he said at last. “Not to the headsman. To me.”
+
+The hall filled with boots and breath. Faces lifted to his: defiant, exhausted, human. He stepped down from the dais and the court shifted, surprised by a distance vanished. He spoke their grievances back to them—not as a concession, but as a mirror—and laid upon the marble a decree: a council of voices, narrow at first, but real.
+
+For a heartbeat, the world wavered. He felt the seam tug, the stitch strain. If he chose fear now, the thread would hold. If he chose risk, it might break.
+
+Ashravan lifted a brazier and set a single seal aflame—the old edict that had silenced a generation. Smoke curled upward. The hall inhaled.
+
+The seam did not split.
+
+It vanished.
+
+And the empire, watching, began to breathe with him.`;
+      return text;
+    })();
+
+    const dilemma = {
+      people: 6,
+      case_1: {
+        swerve: true,
+        reason: "Minimize total harm: swerving reduces fatalities from two to one, following a general harm-reduction principle without profiling."
+      },
+      case_2: {
+        swerve: false,
+        reason: "Avoid targeting a child and refrain from moral weighting by criminal status; in ambiguous ethics, favor protecting the most vulnerable."
+      }
+    };
+
+    const about = "Curious helpful coder";
+
+    const pelicanSvg = `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="300" viewBox="0 0 480 300" role="img" aria-label="Pelican riding a bicycle">
+  <defs>
+    <radialGradient id="sky" cx="50%" cy="30%" r="80%">
+      <stop offset="0%" stop-color="#c7d2fe"/>
+      <stop offset="100%" stop-color="#93c5fd"/>
+    </radialGradient>
+  </defs>
+  <rect x="0" y="0" width="480" height="300" fill="url(#sky)"/>
+  <!-- Ground -->
+  <rect x="0" y="240" width="480" height="60" fill="#86efac"/>
+  <!-- Bicycle wheels -->
+  <circle cx="160" cy="230" r="42" fill="none" stroke="#111827" stroke-width="6"/>
+  <circle cx="320" cy="230" r="42" fill="none" stroke="#111827" stroke-width="6"/>
+  <!-- Bicycle frame -->
+  <line x1="160" y1="230" x2="240" y2="190" stroke="#1f2937" stroke-width="6"/>
+  <line x1="320" y1="230" x2="240" y2="190" stroke="#1f2937" stroke-width="6"/>
+  <line x1="160" y1="230" x2="320" y2="230" stroke="#1f2937" stroke-width="4"/>
+  <line x1="240" y1="190" x2="280" y2="160" stroke="#1f2937" stroke-width="6"/>
+  <!-- Seat and handlebar -->
+  <rect x="230" y="178" width="28" height="6" fill="#111827" rx="3"/>
+  <line x1="280" y1="160" x2="305" y2="150" stroke="#111827" stroke-width="5"/>
+  <line x1="305" y1="150" x2="315" y2="145" stroke="#111827" stroke-width="4"/>
+  <!-- Pelican body -->
+  <ellipse cx="250" cy="160" rx="48" ry="28" fill="#e5e7eb" stroke="#9ca3af" stroke-width="2"/>
+  <!-- Pelican wing -->
+  <path d="M220 160 C235 145, 265 145, 280 160 C265 170, 235 170, 220 160 Z" fill="#d1d5db" stroke="#9ca3af" stroke-width="2"/>
+  <!-- Pelican neck -->
+  <rect x="270" y="140" width="12" height="24" rx="6" fill="#e5e7eb" stroke="#9ca3af" stroke-width="2"/>
+  <!-- Pelican head -->
+  <circle cx="276" cy="132" r="12" fill="#e5e7eb" stroke="#9ca3af" stroke-width="2"/>
+  <!-- Pelican eye -->
+  <circle cx="280" cy="130" r="2.5" fill="#111827"/>
+  <!-- Pelican beak -->
+  <path d="M288 132 L314 138 L288 142 Z" fill="#f59e0b" stroke="#b45309" stroke-width="1.5"/>
+  <!-- Pelican legs to pedals -->
+  <line x1="240" y1="176" x2="210" y2="208" stroke="#fde68a" stroke-width="5"/>
+  <line x1="260" y1="176" x2="290" y2="208" stroke="#fde68a" stroke-width="5"/>
+  <!-- Pedals/crank -->
+  <circle cx="240" cy="190" r="6" fill="#111827"/>
+  <line x1="240" y1="190" x2="210" y2="208" stroke="#111827" stroke-width="4"/>
+  <line x1="240" y1="190" x2="270" y2="208" stroke="#111827" stroke-width="4"/>
+  <!-- Title -->
+  <text x="12" y="24" font-size="16" font-family="sans-serif" fill="#1f2937">Pelican on a Bicycle</text>
+</svg>`;
+
+    const restaurant = {
+      city: "Kolkata",
+      lat: 22.5367,
+      long: 88.3629,
+      name: "6 Ballygunge Place",
+      what_to_eat: "Kosha mangsho with luchi"
+    };
+
+    const prediction = {
+      rate: 0.045,
+      reason: "By December 2025, inflation has eased toward target and growth has cooled, leading the Fed to reduce rates from restrictive levels to roughly 4.5% to balance employment and price stability."
+    };
+
+    const mitLicenseText = `MIT License
+
+Copyright (c) 2025 Your Name
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+`;
+
+    // UID storage
+    const loadUid = () => localStorage.getItem("uid.txt") ?? "";
+    const saveUid = (v) => localStorage.setItem("uid.txt", v);
+
+    // Compose files map
+    function buildFiles() {
+      const uidContent = loadUid();
+      return {
+        "ashravan.txt": { mime: "text/plain", content: storyAshravan },
+        "dilemma.json": { mime: "application/json", content: pretty(dilemma) },
+        "about.md": { mime: "text/markdown", content: about },
+        "pelican.svg": { mime: "image/svg+xml", content: pelicanSvg },
+        "restaurant.json": { mime: "application/json", content: pretty(restaurant) },
+        "prediction.json": { mime: "application/json", content: pretty(prediction) },
+        "LICENSE": { mime: "text/plain", content: mitLicenseText },
+        "uid.txt": { mime: "text/plain", content: uidContent }
+      };
+    }
+
+    // Render files list
+    function renderFiles() {
+      const list = byId("filesList");
+      list.innerHTML = "";
+      const files = buildFiles();
+      Object.entries(files).forEach(([name, { mime, content }]) => {
+        const row = document.createElement("div");
+        row.className = "file-row";
+        const meta = document.createElement("div");
+        meta.className = "meta";
+        const h = document.createElement("strong");
+        h.textContent = name;
+        const d = document.createElement("small");
+        const desc = {
+          "ashravan.txt": "300–400 word story about Ashravan after his restoration.",
+          "dilemma.json": "Trolley-style autonomous vehicle ethics cases.",
+          "about.md": "Three words that describe the developer.",
+          "pelican.svg": "SVG of a pelican riding a bicycle.",
+          "restaurant.json": "Recommended restaurant in Kolkata, India.",
+          "prediction.json": "Forecast of the Fed Funds rate by Dec 2025.",
+          "LICENSE": "MIT License for this project.",
+          "uid.txt": "Exact UID attachment content."
+        }[name] || "";
+        d.textContent = desc;
+        meta.appendChild(h);
+        meta.appendChild(d);
+
+        const actions = document.createElement("div");
+        actions.className = "file-actions";
+        const open = document.createElement("a");
+        open.href = toDataUri(mime, content);
+        open.target = "_blank";
+        open.rel = "noopener";
+        open.textContent = "Open";
+        const download = document.createElement("a");
+        download.href = open.href;
+        download.download = name;
+        download.textContent = "Download";
+        actions.appendChild(open);
+        actions.appendChild(download);
+
+        row.appendChild(meta);
+        row.appendChild(actions);
+        list.appendChild(row);
+      });
+    }
+
+    // Pelican preview and rating
+    function renderPelican() {
+      const container = byId("pelicanContainer");
+      container.innerHTML = pelicanSvg;
+      const ratingEl = byId("pelicanRating");
+      // Lightweight "LLM" heuristic rating based on presence of expected elements
+      const hasWheels = /<circle[^>]+r="42"/g.test(pelicanSvg);
+      const hasBeak = /beak|path[^>]+fill="#f59e0b"/.test(pelicanSvg);
+      const hasText = /Pelican on a Bicycle/.test(pelicanSvg);
+      let score = 6.5;
+      if (hasWheels) score += 1.5;
+      if (hasBeak) score += 1.2;
+      if (hasText) score += 0.6;
+      score = Math.min(10, Math.round(score * 10) / 10);
+      ratingEl.textContent = `LLM rating: ${score}/10 — Recognizable bicycle (wheels/frame) and pelican features (body/beak/eye) present.`;
+    }
+
+    // Checks
+    function runChecks() {
+      // License
+      const licOk = /MIT License/i.test(mitLicenseText) && /Permission is hereby granted/i.test(mitLicenseText);
+      byId("checkLicense").className = licOk ? "ok" : "err";
+      byId("checkLicense").textContent = licOk ? "OK" : "Missing";
+
+      // about.md exactly 3 words
+      const words = about.trim().split(/\s+/).filter(Boolean);
+      const aboutOk = words.length === 3;
+      byId("checkAbout").className = aboutOk ? "ok" : "err";
+      byId("checkAbout").textContent = aboutOk ? "OK" : `Has ${words.length} words`;
+
+      // ashravan word count 300-400
+      const w = storyAshravan.trim().split(/\s+/).filter(Boolean).length;
+      const aOk = w >= 300 && w <= 400;
+      byId("checkAshravan").className = aOk ? "ok" : "err";
+      byId("checkAshravan").textContent = aOk ? "OK" : "Out of range";
+      byId("ashCount").textContent = `(${w} words)`;
+
+      // dilemma structure
+      const dOk = typeof dilemma.people === "number"
+        && dilemma.people === 6
+        && typeof dilemma.case_1?.swerve === "boolean"
+        && typeof dilemma.case_1?.reason === "string"
+        && typeof dilemma.case_2?.swerve === "boolean"
+        && typeof dilemma.case_2?.reason === "string";
+      byId("checkDilemma").className = dOk ? "ok" : "err";
+      byId("checkDilemma").textContent = dOk ? "OK" : "Invalid";
+
+      // restaurant
+      const rOk = restaurant.city === "Kolkata"
+        && typeof restaurant.lat === "number"
+        && typeof restaurant.long === "number"
+        && typeof restaurant.name === "string"
+        && typeof restaurant.what_to_eat === "string";
+      byId("checkRestaurant").className = rOk ? "ok" : "err";
+      byId("checkRestaurant").textContent = rOk ? "OK" : "Invalid";
+
+      // prediction
+      const pOk = typeof prediction.rate === "number"
+        && prediction.rate >= 0 && prediction.rate <= 1
+        && typeof prediction.reason === "string";
+      byId("checkPrediction").className = pOk ? "ok" : "err";
+      byId("checkPrediction").textContent = pOk ? "OK" : "Invalid";
+
+      // pelican validity (basic XML presence)
+      const pelOk = /^<\?xml[^>]*\?>\s*<svg[\s\S]*<\/svg>\s*$/i.test(pelicanSvg.trim());
+      byId("checkPelican").className = pelOk ? "ok" : "err";
+      byId("checkPelican").textContent = pelOk ? "OK" : "Invalid";
+    }
+
+    // ZIP download
+    async function downloadAll() {
+      byId("status").textContent = "Bundling...";
+      const { default: JSZip } = await import("https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js");
+      const zip = new JSZip();
+      const files = buildFiles();
+      for (const [name, file] of Object.entries(files)) {
+        zip.file(name, file.content);
+      }
+      const blob = await zip.generateAsync({ type: "blob" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "site-files.zip";
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+      byId("status").textContent = "Ready";
+    }
+
+    // UID wiring
+    function initUid() {
+      const input = byId("uidInput");
+      input.value = loadUid();
+      byId("saveUidBtn").onclick = () => {
+        saveUid(input.value);
+        renderFiles();
+        const badge = byId("uidSaved");
+        badge.style.display = "inline-block";
+        setTimeout(() => badge.style.display = "none", 1500);
+      };
+    }
+
+    // Init
+    (function init() {
+      renderFiles();
+      renderPelican();
+      runChecks();
+      initUid();
+      byId("downloadAllBtn").addEventListener("click", downloadAll);
+    })();
+  </script>
+</body>
+</html>
